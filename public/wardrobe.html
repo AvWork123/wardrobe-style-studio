@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wardrobe AI — Style Studio</title>
+<style>
+  :root {
+    --bg: #fafaf8;
+    --surface: #ffffff;
+    --surface2: #f5f3ef;
+    --border: #e8e4de;
+    --accent: #c4a882;
+    --accent2: #8b6f5e;
+    --text: #2d2420;
+    --text2: #7a6a60;
+    --tag-shoe: #d4b896;
+    --tag-boot: #8b7355;
+    --tag-sneak: #a8c5b5;
+    --tag-dress: #e8a0b0;
+    --tag-pant: #9aa8c5;
+    --tag-shirt: #c5b89a;
+    --tag-skirt: #c5a0c8;
+    --tag-outer: #b5a0c5;
+    --tag-acc: #c5a0a8;
+    --radius: 14px;
+    --shadow: 0 2px 16px rgba(0,0,0,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Georgia', serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* NAV */
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; gap: 0; position: sticky; top: 0; z-index: 100; height: 60px; }
+  .nav-logo { font-size: 1.2rem; font-weight: bold; color: var(--accent2); letter-spacing: 1px; margin-right: 32px; white-space: nowrap; }
+  .nav-tabs { display: flex; gap: 0; flex: 1; }
+  .nav-tab { padding: 0 18px; height: 60px; display: flex; align-items: center; cursor: pointer; font-size: 0.88rem; color: var(--text2); border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
+  .nav-tab:hover { color: var(--accent2); }
+  .nav-tab.active { color: var(--accent2); border-bottom-color: var(--accent); font-weight: bold; }
+
+  /* VIEWS */
+  .view { display: none; padding: 24px; max-width: 1400px; margin: 0 auto; }
+  .view.active { display: block; }
+
+  /* SECTION HEADER */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .section-title { font-size: 1.4rem; color: var(--accent2); }
+  .btn { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 0.88rem; font-family: inherit; transition: background 0.2s; }
+  .btn:hover { background: var(--accent2); }
+  .btn-outline { background: transparent; color: var(--accent2); border: 1.5px solid var(--accent); }
+  .btn-outline:hover { background: var(--accent); color: white; }
+  .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+
+  /* CATEGORY FILTER */
+  .cat-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .cat-chip { padding: 6px 16px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; font-size: 0.82rem; transition: all 0.2s; color: var(--text2); }
+  .cat-chip.active, .cat-chip:hover { border-color: var(--accent); color: var(--accent2); background: #fdf6ef; }
+  .cat-chip[data-cat="shoes"] { border-color: var(--tag-shoe); }
+  .cat-chip[data-cat="boots"] { border-color: var(--tag-boot); }
+  .cat-chip[data-cat="sneakers"] { border-color: var(--tag-sneak); }
+  .cat-chip[data-cat="dresses"] { border-color: var(--tag-dress); }
+  .cat-chip[data-cat="pants"] { border-color: var(--tag-pant); }
+  .cat-chip[data-cat="shirts"] { border-color: var(--tag-shirt); }
+  .cat-chip[data-cat="skirts"] { border-color: var(--tag-skirt); }
+
+  /* GRID */
+  .wardrobe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+  .item-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: all 0.2s; position: relative; }
+  .item-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); border-color: var(--accent); }
+  .item-card.selected { border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(196,168,130,0.3); }
+  .item-img-wrap { background: white; padding: 12px; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
+  .item-img-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .item-img-wrap .placeholder { width: 80px; height: 80px; background: var(--surface2); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text2); font-size: 2rem; }
+  .item-info { padding: 10px 12px; }
+  .item-name { font-size: 0.85rem; font-weight: bold; color: var(--text); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-cat { display: inline-block; font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; color: white; }
+  .cat-shoes { background: var(--tag-shoe); }
+  .cat-boots { background: var(--tag-boot); }
+  .cat-sneakers { background: var(--tag-sneak); color: #2d4a3e; }
+  .cat-dresses { background: var(--tag-dress); }
+  .cat-pants { background: var(--tag-pant); }
+  .cat-shirts { background: var(--tag-shirt); color: var(--text); }
+  .cat-skirts { background: var(--tag-skirt); }
+  .cat-outerwear { background: var(--tag-outer); }
+  .cat-accessories { background: var(--tag-acc); }
+  .item-sel-badge { position: absolute; top: 8px; right: 8px; background: var(--accent2); color: white; border-radius: 50%; width: 24px; height: 24px; display: none; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; }
+  .item-card.selected .item-sel-badge { display: flex; }
+
+  /* UPLOAD MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius); padding: 28px; max-width: 480px; width: 90%; box-shadow: 0 8px 48px rgba(0,0,0,0.15); }
+  .modal h2 { font-size: 1.2rem; color: var(--accent2); margin-bottom: 20px; }
+  .modal label { display: block; font-size: 0.85rem; color: var(--text2); margin-bottom: 6px; margin-top: 14px; }
+  .modal input, .modal select { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.9rem; color: var(--text); background: var(--bg); }
+  .modal input:focus, .modal select:focus { outline: none; border-color: var(--accent); }
+  .upload-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 28px; text-align: center; cursor: pointer; transition: all 0.2s; margin-top: 14px; }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: #fdf6ef; }
+  .upload-zone p { color: var(--text2); font-size: 0.85rem; }
+  .upload-preview { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .upload-preview img { width: 70px; height: 70px; object-fit: contain; background: white; border: 1px solid var(--border); border-radius: 6px; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .processing-bar { height: 4px; background: var(--surface2); border-radius: 2px; margin-top: 10px; overflow: hidden; display: none; }
+  .processing-bar .fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+
+  /* OUTFIT BUILDER */
+  .outfit-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+  @media (max-width: 900px) { .outfit-layout { grid-template-columns: 1fr; } }
+  .outfit-model-panel { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 20px; text-align: center; position: sticky; top: 84px; }
+  .outfit-model-panel h3 { font-size: 1rem; color: var(--accent2); margin-bottom: 16px; }
+  .model-wrap { position: relative; display: inline-block; }
+  .model-svg { width: 200px; }
+  .outfit-slots { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left; }
+  .outfit-slot { background: var(--surface2); border: 1.5px dashed var(--border); border-radius: 8px; padding: 8px; min-height: 70px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .outfit-slot.filled { border-style: solid; border-color: var(--accent); background: white; }
+  .outfit-slot img { max-height: 50px; max-width: 60px; object-fit: contain; }
+  .outfit-slot .slot-label { font-size: 0.7rem; color: var(--text2); margin-top: 4px; }
+  .outfit-slot .slot-remove { font-size: 0.7rem; color: var(--accent2); cursor: pointer; }
+  .outfit-name-row { display: flex; gap: 8px; margin-top: 14px; }
+  .outfit-name-row input { flex: 1; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.85rem; }
+  .outfit-clothes-panel { }
+  .outfit-saved { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 20px; }
+  .outfit-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .outfit-card h4 { font-size: 0.95rem; color: var(--accent2); margin-bottom: 10px; }
+  .outfit-thumbs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .outfit-thumbs img { width: 52px; height: 52px; object-fit: contain; background: white; border: 1px solid var(--border); border-radius: 6px; }
+  .outfit-thumbs .empty-thumb { width: 52px; height: 52px; background: var(--surface2); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--border); }
+  .outfit-actions { margin-top: 10px; display: flex; gap: 6px; }
+
+  /* AI PANEL */
+  .ai-panel { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+  .ai-panel h3 { font-size: 1rem; color: var(--accent2); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .ai-chat { min-height: 120px; max-height: 300px; overflow-y: auto; background: var(--surface2); border-radius: 8px; padding: 12px; margin-bottom: 10px; font-size: 0.88rem; line-height: 1.6; }
+  .ai-chat .msg-user { color: var(--accent2); font-weight: bold; margin-bottom: 4px; }
+  .ai-chat .msg-ai { color: var(--text); margin-bottom: 12px; }
+  .ai-chat .msg-ai ul { padding-left: 18px; }
+  .ai-chat .msg-ai li { margin-bottom: 3px; }
+  .ai-input-row { display: flex; gap: 8px; }
+  .ai-input-row input { flex: 1; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.9rem; }
+  .ai-input-row input:focus { outline: none; border-color: var(--accent); }
+  .ai-key-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; font-size: 0.82rem; color: var(--text2); }
+  .ai-key-row input { flex: 1; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.82rem; font-family: monospace; }
+  .ai-key-row input:focus { outline: none; border-color: var(--accent); }
+  .ai-suggestions { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
+  .suggestion-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; font-size: 0.85rem; }
+  .suggestion-card h4 { color: var(--accent2); margin-bottom: 6px; font-size: 0.9rem; }
+
+  /* TRENDS */
+  .trends-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .trend-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .trend-card h4 { font-size: 1rem; color: var(--accent2); margin-bottom: 8px; }
+  .trend-card .season { font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); margin-bottom: 8px; }
+  .trend-card p { font-size: 0.85rem; color: var(--text); line-height: 1.6; }
+  .trend-card .buy-reason { background: var(--surface2); border-radius: 8px; padding: 8px 12px; margin-top: 10px; font-size: 0.82rem; color: var(--text2); }
+  .trend-card .buy-reason strong { color: var(--accent2); }
+  .season-selector { display: flex; gap: 8px; margin-bottom: 20px; }
+  .season-btn { padding: 8px 20px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; font-size: 0.85rem; font-family: inherit; color: var(--text2); transition: all 0.2s; }
+  .season-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .wishlist-section { margin-top: 28px; }
+  .wishlist-section h3 { font-size: 1.1rem; color: var(--accent2); margin-bottom: 14px; }
+  .wishlist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .wishlist-item { background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px; }
+  .wishlist-item h5 { font-size: 0.88rem; color: var(--text); margin-bottom: 4px; }
+  .wishlist-item p { font-size: 0.78rem; color: var(--text2); line-height: 1.5; }
+  .wishlist-item .priority { font-size: 0.72rem; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 6px; }
+  .priority-high { color: #c4605a; }
+  .priority-med { color: var(--accent2); }
+  .priority-low { color: var(--text2); }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text); color: white; padding: 10px 20px; border-radius: 20px; font-size: 0.85rem; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 999; }
+  #toast.show { opacity: 1; }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.9rem; line-height: 1.6; }
+
+  /* ITEM DETAIL MODAL */
+  .item-detail-img { max-width: 200px; max-height: 200px; object-fit: contain; background: white; border-radius: 8px; border: 1px solid var(--border); display: block; margin: 0 auto 16px; }
+  .detail-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; }
+  .detail-meta span { color: var(--text2); }
+  .detail-meta strong { color: var(--text); }
+  .outfit-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .outfit-tag { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 3px 10px; font-size: 0.78rem; color: var(--text2); }
+
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .tab-content { }
+  .outfit-tab-btns { display: flex; gap: 0; border-bottom: 1.5px solid var(--border); margin-bottom: 20px; }
+  .outfit-tab-btn { padding: 10px 20px; cursor: pointer; font-size: 0.88rem; border-bottom: 3px solid transparent; margin-bottom: -1.5px; color: var(--text2); font-family: inherit; background: none; border-left: none; border-right: none; border-top: none; }
+  .outfit-tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent); font-weight: bold; }
+
+  .color-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border); vertical-align: middle; margin-right: 4px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">✦ Style Studio</div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showView('wardrobe')">Wardrobe</div>
+    <div class="nav-tab" onclick="showView('outfits')">Outfit Builder</div>
+    <div class="nav-tab" onclick="showView('ai')">AI Stylist</div>
+    <div class="nav-tab" onclick="showView('trends')">Trends & Wishlist</div>
+  </div>
+</nav>
+
+<!-- ========== WARDROBE VIEW ========== -->
+<div class="view active" id="view-wardrobe">
+  <div class="section-header">
+    <div class="section-title">My Wardrobe</div>
+    <button class="btn" onclick="openUploadModal()">+ Add Item</button>
+  </div>
+  <div class="cat-filters">
+    <div class="cat-chip active" data-cat="all" onclick="filterCat('all',this)">All</div>
+    <div class="cat-chip" data-cat="dresses" onclick="filterCat('dresses',this)">Dresses</div>
+    <div class="cat-chip" data-cat="shirts" onclick="filterCat('shirts',this)">Shirts &amp; Tops</div>
+    <div class="cat-chip" data-cat="skirts" onclick="filterCat('skirts',this)">Skirts</div>
+    <div class="cat-chip" data-cat="pants" onclick="filterCat('pants',this)">Pants</div>
+    <div class="cat-chip" data-cat="shoes" onclick="filterCat('shoes',this)">Shoes</div>
+    <div class="cat-chip" data-cat="boots" onclick="filterCat('boots',this)">Boots</div>
+    <div class="cat-chip" data-cat="sneakers" onclick="filterCat('sneakers',this)">Sneakers</div>
+    <div class="cat-chip" data-cat="outerwear" onclick="filterCat('outerwear',this)">Jackets &amp; Blazers</div>
+    <div class="cat-chip" data-cat="accessories" onclick="filterCat('accessories',this)">Accessories</div>
+  </div>
+  <div class="wardrobe-grid" id="wardrobe-grid">
+    <div class="empty-state" style="grid-column:1/-1">
+      <div class="icon">👗</div>
+      <p>Your wardrobe is empty.<br>Click <strong>+ Add Item</strong> to upload your first piece.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== OUTFITS VIEW ========== -->
+<div class="view" id="view-outfits">
+  <div class="outfit-tab-btns">
+    <button class="outfit-tab-btn active" onclick="switchOutfitTab('builder',this)">Build Outfit</button>
+    <button class="outfit-tab-btn" onclick="switchOutfitTab('saved',this)">Saved Outfits</button>
+  </div>
+
+  <div id="outfit-builder-tab">
+    <div class="outfit-layout">
+      <div class="outfit-clothes-panel">
+        <div class="section-header" style="margin-bottom:12px">
+          <div style="font-size:0.95rem;color:var(--text2)">Click items to add to outfit</div>
+          <div style="font-size:0.82rem;color:var(--text2)" id="outfit-count">0 items selected</div>
+        </div>
+        <div class="cat-filters" id="outfit-cat-filters">
+          <div class="cat-chip active" data-cat="all" onclick="filterOutfitCat('all',this)">All</div>
+          <div class="cat-chip" data-cat="dresses" onclick="filterOutfitCat('dresses',this)">Dresses</div>
+          <div class="cat-chip" data-cat="shirts" onclick="filterOutfitCat('shirts',this)">Shirts</div>
+          <div class="cat-chip" data-cat="skirts" onclick="filterOutfitCat('skirts',this)">Skirts</div>
+          <div class="cat-chip" data-cat="pants" onclick="filterOutfitCat('pants',this)">Pants</div>
+          <div class="cat-chip" data-cat="shoes" onclick="filterOutfitCat('shoes',this)">Shoes</div>
+          <div class="cat-chip" data-cat="boots" onclick="filterOutfitCat('boots',this)">Boots</div>
+          <div class="cat-chip" data-cat="sneakers" onclick="filterOutfitCat('sneakers',this)">Sneakers</div>
+          <div class="cat-chip" data-cat="outerwear" onclick="filterOutfitCat('outerwear',this)">Jackets</div>
+          <div class="cat-chip" data-cat="accessories" onclick="filterOutfitCat('accessories',this)">Accessories</div>
+        </div>
+        <div class="wardrobe-grid" id="outfit-picker-grid"></div>
+      </div>
+
+      <div class="outfit-model-panel">
+        <h3>Your Model</h3>
+        <div class="model-wrap">
+          <svg class="model-svg" viewBox="0 0 200 480" xmlns="http://www.w3.org/2000/svg">
+            <!-- Hair -->
+            <ellipse cx="100" cy="48" rx="36" ry="40" fill="#6b3a2a"/>
+            <ellipse cx="100" cy="52" rx="28" ry="32" fill="#f5d5c0"/>
+            <!-- Neck -->
+            <rect x="90" y="90" width="20" height="20" rx="4" fill="#f5d5c0"/>
+            <!-- Body torso -->
+            <path d="M65 105 Q55 130 58 190 L142 190 Q145 130 135 105 Q120 98 100 98 Q80 98 65 105Z" fill="#f5d5c0" id="model-torso"/>
+            <!-- Arms -->
+            <path d="M65 110 Q42 140 45 180 Q48 185 55 182 Q60 145 72 118Z" fill="#f5d5c0"/>
+            <path d="M135 110 Q158 140 155 180 Q152 185 145 182 Q140 145 128 118Z" fill="#f5d5c0"/>
+            <!-- Hands -->
+            <ellipse cx="50" cy="185" rx="9" ry="7" fill="#f5d5c0"/>
+            <ellipse cx="150" cy="185" rx="9" ry="7" fill="#f5d5c0"/>
+            <!-- Hips/skirt area -->
+            <path d="M58 190 Q52 215 58 240 L142 240 Q148 215 142 190Z" fill="#f5d5c0" id="model-hip"/>
+            <!-- Legs -->
+            <path d="M58 240 Q54 300 56 360 Q58 365 70 364 Q72 304 80 244Z" fill="#f5d5c0"/>
+            <path d="M142 240 Q146 300 144 360 Q142 365 130 364 Q128 304 120 244Z" fill="#f5d5c0"/>
+            <!-- Feet -->
+            <ellipse cx="63" cy="368" rx="14" ry="8" fill="#6b3a2a"/>
+            <ellipse cx="137" cy="368" rx="14" ry="8" fill="#6b3a2a"/>
+            <!-- Face features -->
+            <ellipse cx="90" cy="68" rx="5" ry="6" fill="white" opacity="0.9"/>
+            <ellipse cx="110" cy="68" rx="5" ry="6" fill="white" opacity="0.9"/>
+            <circle cx="90" cy="69" r="3" fill="#4a2810"/>
+            <circle cx="110" cy="69" r="3" fill="#4a2810"/>
+            <path d="M87 82 Q100 88 113 82" stroke="#c4607a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            <!-- Eyebrows -->
+            <path d="M84 62 Q90 59 96 62" stroke="#5a2a1a" stroke-width="1.5" fill="none"/>
+            <path d="M104 62 Q110 59 116 62" stroke="#5a2a1a" stroke-width="1.5" fill="none"/>
+          </svg>
+        </div>
+
+        <div class="outfit-slots" id="outfit-slots">
+          <!-- filled dynamically -->
+        </div>
+
+        <div class="outfit-name-row">
+          <input type="text" id="outfit-name-input" placeholder="Outfit name…">
+          <button class="btn btn-sm" onclick="saveOutfit()">Save</button>
+        </div>
+        <button class="btn btn-outline btn-sm" style="width:100%;margin-top:8px" onclick="clearOutfit()">Clear</button>
+
+        <div id="ai-outfit-suggest" style="margin-top:14px;display:none">
+          <div style="font-size:0.78rem;color:var(--text2);background:var(--surface2);border-radius:8px;padding:10px;line-height:1.6" id="ai-outfit-text"></div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="width:100%;margin-top:8px" onclick="getOutfitSuggestion()">✦ AI Suggest</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="outfit-saved-tab" style="display:none">
+    <div id="outfit-saved-grid" class="outfit-saved">
+      <div class="empty-state"><div class="icon">👚</div><p>No saved outfits yet.<br>Build and save your first look!</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== AI STYLIST VIEW ========== -->
+<div class="view" id="view-ai">
+  <div class="section-header">
+    <div class="section-title">AI Stylist</div>
+  </div>
+
+  <div class="ai-panel">
+    <h3>⚙ Claude API Key</h3>
+    <div style="font-size:0.82rem;color:var(--text2);margin-bottom:10px">Enter your Anthropic API key to enable AI styling. Stored locally only.</div>
+    <div class="ai-key-row">
+      <input type="password" id="api-key-input" placeholder="sk-ant-…" oninput="saveApiKey()">
+      <span id="key-status" style="font-size:0.8rem;color:var(--text2)"></span>
+    </div>
+  </div>
+
+  <div class="ai-panel">
+    <h3>✦ Ask Your Stylist</h3>
+    <div class="ai-chat" id="ai-chat-log">
+      <div class="msg-ai">Hi! I'm your personal AI stylist. Ask me anything about your wardrobe — "What should I wear to a dinner party?", "Build me a casual Friday look", "What goes with my black blazer?" and more!</div>
+    </div>
+    <div class="ai-input-row">
+      <input type="text" id="ai-query" placeholder="Ask your stylist…" onkeydown="if(event.key==='Enter')sendAiQuery()">
+      <button class="btn" onclick="sendAiQuery()" id="ai-send-btn">Ask</button>
+    </div>
+  </div>
+
+  <div class="ai-panel">
+    <h3>✦ Smart Outfit Suggestions</h3>
+    <div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px">AI-generated outfit combinations from your current wardrobe.</div>
+    <button class="btn" onclick="generateOutfitSuggestions()">Generate Outfit Ideas</button>
+    <div class="ai-suggestions" id="ai-suggestions" style="margin-top:16px"></div>
+  </div>
+</div>
+
+<!-- ========== TRENDS VIEW ========== -->
+<div class="view" id="view-trends">
+  <div class="section-header">
+    <div class="section-title">Trends &amp; Wishlist</div>
+    <button class="btn" onclick="refreshTrends()">↻ Refresh Trends</button>
+  </div>
+
+  <div class="season-selector">
+    <button class="season-btn active" onclick="setSeason('autumn',this)">🍂 Autumn</button>
+    <button class="season-btn" onclick="setSeason('winter',this)">❄ Winter</button>
+    <button class="season-btn" onclick="setSeason('spring',this)">🌸 Spring</button>
+    <button class="season-btn" onclick="setSeason('summer',this)">☀ Summer</button>
+  </div>
+
+  <div class="trends-grid" id="trends-grid"></div>
+
+  <div class="wishlist-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h3 style="font-size:1.1rem;color:var(--accent2)">Shopping Wishlist</h3>
+      <button class="btn btn-sm" onclick="openWishlistModal()">+ Add Item</button>
+    </div>
+    <div class="wishlist-grid" id="wishlist-grid">
+      <div class="empty-state"><div class="icon">🛍</div><p>No wishlist items yet.<br>Add items or let AI suggest what to buy next.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== UPLOAD MODAL ========== -->
+<div class="modal-overlay" id="upload-modal">
+  <div class="modal">
+    <h2>Add Clothing Item</h2>
+    <label>Upload Photo(s)</label>
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondrop="handleDrop(event)" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')">
+      <p>Click or drag &amp; drop photos here<br><span style="font-size:0.75rem">JPG, PNG, WEBP — background will be removed automatically</span></p>
+      <div class="upload-preview" id="upload-preview"></div>
+    </div>
+    <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="handleFileSelect(event)">
+    <div class="processing-bar" id="processing-bar"><div class="fill" id="processing-fill" style="width:0%"></div></div>
+    <label>Item Name</label>
+    <input type="text" id="item-name" placeholder="e.g. Black Silk Blouse">
+    <label>Category</label>
+    <select id="item-cat">
+      <option value="dresses">Dress</option>
+      <option value="shirts">Shirt / Top</option>
+      <option value="skirts">Skirt</option>
+      <option value="pants">Pants</option>
+      <option value="shoes">Shoes</option>
+      <option value="boots">Boots</option>
+      <option value="sneakers">Sneakers</option>
+      <option value="outerwear">Jacket / Blazer / Coat</option>
+      <option value="accessories">Accessory (Bag, Belt, etc.)</option>
+    </select>
+    <label>Colour</label>
+    <input type="text" id="item-colour" placeholder="e.g. Navy Blue">
+    <label>Style Tags (comma separated)</label>
+    <input type="text" id="item-tags" placeholder="e.g. casual, quirky, summer">
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('upload-modal')">Cancel</button>
+      <button class="btn" onclick="saveItem()">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== ITEM DETAIL MODAL ========== -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal">
+    <h2 id="detail-title">Item Detail</h2>
+    <img id="detail-img" class="item-detail-img" src="" alt="">
+    <div class="detail-meta">
+      <div><span>Category</span><br><strong id="detail-cat">—</strong></div>
+      <div><span>Colour</span><br><strong id="detail-colour">—</strong></div>
+    </div>
+    <div style="margin-top:10px;font-size:0.82rem;color:var(--text2)">Used in outfits:</div>
+    <div class="outfit-tags" id="detail-outfits"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="deleteItem()" style="color:#c4605a;border-color:#c4605a">Delete</button>
+      <button class="btn btn-outline" onclick="closeModal('detail-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== WISHLIST MODAL ========== -->
+<div class="modal-overlay" id="wishlist-modal">
+  <div class="modal">
+    <h2>Add to Wishlist</h2>
+    <label>Item</label>
+    <input type="text" id="wish-name" placeholder="e.g. Leopard Print Midi Skirt">
+    <label>Reason / Notes</label>
+    <input type="text" id="wish-reason" placeholder="e.g. Fill gap for smart casual looks">
+    <label>Priority</label>
+    <select id="wish-priority">
+      <option value="high">High — Need soon</option>
+      <option value="med">Medium — Would be nice</option>
+      <option value="low">Low — Someday</option>
+    </select>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('wishlist-modal')">Cancel</button>
+      <button class="btn" onclick="saveWishlistItem()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const SEED_ITEMS = [
+  // ── BOOTS ──
+  {id:'s_2989',name:'Tan Chelsea Boots',cat:'boots',colour:'Tan',tags:['classic','everyday','leather'],imgUrl:'wardrobe-photos/IMG_2989.JPEG',added:'2025-01-01'},
+  {id:'s_2991',name:'Black RM Williams Boots',cat:'boots',colour:'Black',tags:['classic','professional','leather'],imgUrl:'wardrobe-photos/IMG_2991.JPEG',added:'2025-01-01'},
+  {id:'s_2992',name:'Tweed Heeled Ankle Boots',cat:'boots',colour:'Black/White',tags:['quirky','evening','statement'],imgUrl:'wardrobe-photos/IMG_2992.JPEG',added:'2025-01-01'},
+  {id:'s_2994',name:'Black Knee-High Buckle Boots',cat:'boots',colour:'Black',tags:['edgy','dramatic','leather'],imgUrl:'wardrobe-photos/IMG_2994.JPEG',added:'2025-01-01'},
+  // ── SNEAKERS ──
+  {id:'s_2990',name:'Pink Onitsuka Tigers',cat:'sneakers',colour:'Pink',tags:['fun','casual','retro'],imgUrl:'wardrobe-photos/IMG_2990.JPEG',added:'2025-01-01'},
+  {id:'s_2999',name:'Dusty Pink Adidas Gazelles',cat:'sneakers',colour:'Dusty Pink',tags:['casual','retro','everyday'],imgUrl:'wardrobe-photos/IMG_2999.JPEG',added:'2025-01-01'},
+  {id:'s_3002',name:'Blue Adidas Spezial',cat:'sneakers',colour:'Blue',tags:['casual','retro','sporty'],imgUrl:'wardrobe-photos/IMG_3002.JPEG',added:'2025-01-01'},
+  {id:'s_3003',name:'White Onitsuka Tigers',cat:'sneakers',colour:'White/Navy',tags:['classic','casual','retro'],imgUrl:'wardrobe-photos/IMG_3003.JPEG',added:'2025-01-01'},
+  {id:'s_3004',name:'White Adidas Sambas',cat:'sneakers',colour:'White/Teal',tags:['casual','quirky','charmed'],imgUrl:'wardrobe-photos/IMG_3004.JPEG',added:'2025-01-01'},
+  // ── SHOES ──
+  {id:'s_2993',name:'Black Patent Loafers',cat:'shoes',colour:'Black',tags:['professional','classic','polish'],imgUrl:'wardrobe-photos/IMG_2993.JPEG',added:'2025-01-01'},
+  {id:'s_2997',name:'Mimco Burgundy Heart Heels',cat:'shoes',colour:'Burgundy',tags:['quirky','evening','statement','mimco'],imgUrl:'wardrobe-photos/IMG_2997.JPEG',added:'2025-01-01'},
+  {id:'s_2998',name:'Dark Red Patent Slingbacks',cat:'shoes',colour:'Dark Red',tags:['elegant','classic','pointy'],imgUrl:'wardrobe-photos/IMG_2998.JPEG',added:'2025-01-01'},
+  {id:'s_3005',name:'Black Patent Mary Janes',cat:'shoes',colour:'Black',tags:['quirky','cute','multi-strap'],imgUrl:'wardrobe-photos/IMG_3005.JPEG',added:'2025-01-01'},
+  // ── ACCESSORIES ──
+  {id:'s_2995',name:'Gold Glitter Clutch',cat:'accessories',colour:'Gold',tags:['evening','glamour','party'],imgUrl:'wardrobe-photos/IMG_2995.JPEG',added:'2025-01-01'},
+  {id:'s_2996',name:'Black Box Clutch',cat:'accessories',colour:'Black',tags:['evening','classic','minimal'],imgUrl:'wardrobe-photos/IMG_2996.JPEG',added:'2025-01-01'},
+  // ── SKIRTS ──
+  {id:'s_3008',name:'Red Orange Midi Skirt',cat:'skirts',colour:'Red/Orange',tags:['bold','casual','summer'],imgUrl:'wardrobe-photos/IMG_3008.JPEG',added:'2025-01-01'},
+  {id:'s_3013',name:'Emerald Green Tulle Skirt',cat:'skirts',colour:'Emerald Green',tags:['dramatic','evening','whimsical'],imgUrl:'wardrobe-photos/IMG_3013.JPEG',added:'2025-01-01'},
+  {id:'s_3019',name:'Grey Ruffle Tulle Skirt',cat:'skirts',colour:'Grey',tags:['romantic','ethereal','statement'],imgUrl:'wardrobe-photos/IMG_3019.JPEG',added:'2025-01-01'},
+  {id:'s_3020',name:'Black Faux Leather Midi Skirt',cat:'skirts',colour:'Black',tags:['edgy','professional','sleek'],imgUrl:'wardrobe-photos/IMG_3020.JPEG',added:'2025-01-01'},
+  {id:'s_3026',name:'Navy Tiered Tulle Maxi Skirt',cat:'skirts',colour:'Navy',tags:['romantic','evening','dramatic'],imgUrl:'wardrobe-photos/IMG_3026.JPEG',added:'2025-01-01'},
+  {id:'s_3030',name:'Dark Plum Draped Skirt',cat:'skirts',colour:'Dark Plum',tags:['dramatic','asymmetric','bold'],imgUrl:'wardrobe-photos/IMG_3030.JPEG',added:'2025-01-01'},
+  // ── PANTS ──
+  {id:'s_3012',name:'Gold Metallic Wide-Leg Pants',cat:'pants',colour:'Gold/Metallic',tags:['statement','evening','luxe'],imgUrl:'wardrobe-photos/IMG_3012.JPEG',added:'2025-01-01'},
+  {id:'s_3053',name:'White Wide-Leg Trousers',cat:'pants',colour:'White',tags:['clean','professional','summer'],imgUrl:'wardrobe-photos/IMG_3053.JPEG',added:'2025-01-01'},
+  {id:'s_3054',name:'Black Slim Trousers',cat:'pants',colour:'Black',tags:['classic','professional','versatile'],imgUrl:'wardrobe-photos/IMG_3054.JPEG',added:'2025-01-01'},
+  {id:'s_3055',name:'Dark Plaid Tapered Trousers',cat:'pants',colour:'Dark Navy/Plaid',tags:['quirky','professional','tartan'],imgUrl:'wardrobe-photos/IMG_3055.JPEG',added:'2025-01-01'},
+  {id:'s_3056',name:'Mustard Yellow Belted Trousers',cat:'pants',colour:'Mustard Yellow',tags:['bold','statement','fun'],imgUrl:'wardrobe-photos/IMG_3056.JPEG',added:'2025-01-01'},
+  {id:'s_3057',name:'Light Blue Wide-Leg Jeans',cat:'pants',colour:'Light Blue',tags:['casual','relaxed','denim'],imgUrl:'wardrobe-photos/IMG_3057.JPEG',added:'2025-01-01'},
+  {id:'s_3058',name:'Beige High-Waist Trousers',cat:'pants',colour:'Beige',tags:['classic','professional','neutral'],imgUrl:'wardrobe-photos/IMG_3058.JPEG',added:'2025-01-01'},
+  // ── DRESSES ──
+  {id:'s_3010',name:'Denim Puff Sleeve Mini Dress',cat:'dresses',colour:'Denim Blue',tags:['quirky','casual','fun'],imgUrl:'wardrobe-photos/IMG_3010.JPEG',added:'2025-01-01'},
+  {id:'s_3011',name:'Dark Denim V-Neck Midi Dress',cat:'dresses',colour:'Dark Denim',tags:['casual','easy','denim'],imgUrl:'wardrobe-photos/IMG_3011.JPEG',added:'2025-01-01'},
+  {id:'s_3014',name:'Blue Tartan Midi Dress',cat:'dresses',colour:'Blue/Black Plaid',tags:['quirky','fun','print'],imgUrl:'wardrobe-photos/IMG_3014.JPEG',added:'2025-01-01'},
+  {id:'s_3015',name:'Black Relaxed Shirt Dress',cat:'dresses',colour:'Black',tags:['casual','relaxed','versatile'],imgUrl:'wardrobe-photos/IMG_3015.JPEG',added:'2025-01-01'},
+  {id:'s_3016',name:'Tropical Print Mini Dress',cat:'dresses',colour:'Green/Pink',tags:['quirky','summer','fun','bold'],imgUrl:'wardrobe-photos/IMG_3016.JPEG',added:'2025-01-01'},
+  {id:'s_3017',name:'Khaki Shift Dress',cat:'dresses',colour:'Khaki',tags:['professional','minimal','CUE'],imgUrl:'wardrobe-photos/IMG_3017.JPEG',added:'2025-01-01'},
+  {id:'s_3018',name:'Nude V-Neck Midi Dress',cat:'dresses',colour:'Nude/Cream',tags:['elegant','professional','COX'],imgUrl:'wardrobe-photos/IMG_3018.JPEG',added:'2025-01-01'},
+  {id:'s_3021',name:'Black White Abstract Wrap Dress',cat:'dresses',colour:'Black/White',tags:['chic','print','versatile'],imgUrl:'wardrobe-photos/IMG_3021.JPEG',added:'2025-01-01'},
+  {id:'s_3022',name:'Black Lace High-Neck Dress',cat:'dresses',colour:'Black',tags:['evening','elegant','CUE','new'],imgUrl:'wardrobe-photos/IMG_3022.JPEG',added:'2025-01-01'},
+  {id:'s_3023',name:'Watercolour Plaid Draped Dress',cat:'dresses',colour:'Multicolour',tags:['quirky','artistic','statement'],imgUrl:'wardrobe-photos/IMG_3023.JPEG',added:'2025-01-01'},
+  {id:'s_3025',name:'Cream Flutter Sleeve Midi Dress',cat:'dresses',colour:'Cream',tags:['romantic','feminine','summer'],imgUrl:'wardrobe-photos/IMG_3025.JPEG',added:'2025-01-01'},
+  // ── SHIRTS & TOPS ──
+  {id:'s_3027',name:'Grey Tartan Peplum Top',cat:'shirts',colour:'Grey/Dark Tartan',tags:['professional','quirky','CUE'],imgUrl:'wardrobe-photos/IMG_3027.JPEG',added:'2025-01-01'},
+  {id:'s_3028',name:'White Mock-Neck Sleeveless Top',cat:'shirts',colour:'White',tags:['clean','minimal','versatile'],imgUrl:'wardrobe-photos/IMG_3028.JPEG',added:'2025-01-01'},
+  {id:'s_3029',name:'Silver Sequin Sparkle Tank',cat:'shirts',colour:'Silver/Grey',tags:['evening','party','glam'],imgUrl:'wardrobe-photos/IMG_3029.JPEG',added:'2025-01-01'},
+  {id:'s_3031',name:'Grey Oxford Polo Crop Top',cat:'shirts',colour:'Grey',tags:['preppy','casual','Oxford'],imgUrl:'wardrobe-photos/IMG_3031.JPEG',added:'2025-01-01'},
+  {id:'s_3032',name:'Charcoal Ribbed Mock-Neck Top',cat:'shirts',colour:'Charcoal',tags:['minimal','versatile','layering'],imgUrl:'wardrobe-photos/IMG_3032.JPEG',added:'2025-01-01'},
+  {id:'s_3033',name:'White Crop Tee',cat:'shirts',colour:'White',tags:['casual','basic','versatile'],imgUrl:'wardrobe-photos/IMG_3033.JPEG',added:'2025-01-01'},
+  {id:'s_3034',name:'Black Lace Puff-Sleeve Top',cat:'shirts',colour:'Black',tags:['romantic','evening','lace'],imgUrl:'wardrobe-photos/IMG_3034.JPEG',added:'2025-01-01'},
+  {id:'s_3035',name:'La Plage Lobster Print Tee',cat:'shirts',colour:'White/Coral Print',tags:['quirky','fun','graphic','summer'],imgUrl:'wardrobe-photos/IMG_3035.JPEG',added:'2025-01-01'},
+  {id:'s_3036',name:'Anime Japanese Graphic Tee',cat:'shirts',colour:'White/Red Print',tags:['quirky','bold','graphic'],imgUrl:'wardrobe-photos/IMG_3036.JPEG',added:'2025-01-01'},
+  {id:'s_3037',name:'Black White Plaid Crop Tee',cat:'shirts',colour:'Black/White',tags:['casual','tartan','crop'],imgUrl:'wardrobe-photos/IMG_3037.JPEG',added:'2025-01-01'},
+  {id:'s_3038',name:'Pixies Band Tee',cat:'shirts',colour:'White/Gold Print',tags:['quirky','music','graphic','fun'],imgUrl:'wardrobe-photos/IMG_3038.JPEG',added:'2025-01-01'},
+  {id:'s_3039',name:'Pink Puff-Sleeve Crop Top',cat:'shirts',colour:'Pink',tags:['feminine','fun','summer'],imgUrl:'wardrobe-photos/IMG_3039.JPEG',added:'2025-01-01'},
+  {id:'s_3040',name:'White Off-Shoulder Crop Top',cat:'shirts',colour:'White',tags:['romantic','summer','casual'],imgUrl:'wardrobe-photos/IMG_3040.JPEG',added:'2025-01-01'},
+  {id:'s_3041',name:'Burgundy Snap-Button Crop Top',cat:'shirts',colour:'Burgundy',tags:['edgy','fitted','autumn'],imgUrl:'wardrobe-photos/IMG_3041.JPEG',added:'2025-01-01'},
+  {id:'s_3042',name:'Black Fine Knit Jumper',cat:'shirts',colour:'Black',tags:['classic','layering','versatile'],imgUrl:'wardrobe-photos/IMG_3042.JPEG',added:'2025-01-01'},
+  {id:'s_3043',name:'Burgundy Cardigan',cat:'shirts',colour:'Burgundy',tags:['cosy','classic','layering'],imgUrl:'wardrobe-photos/IMG_3043.JPEG',added:'2025-01-01'},
+  {id:'s_3044',name:'White Oxford Shirt',cat:'shirts',colour:'White',tags:['classic','professional','versatile'],imgUrl:'wardrobe-photos/IMG_3044.JPEG',added:'2025-01-01'},
+  {id:'s_3045',name:'Grey Cardigan',cat:'shirts',colour:'Grey',tags:['cosy','layering','casual'],imgUrl:'wardrobe-photos/IMG_3045.JPEG',added:'2025-01-01'},
+  // ── OUTERWEAR ──
+  {id:'s_3046',name:'Cream Quilted Jacket',cat:'outerwear',colour:'Cream',tags:['casual','spring','Forever New'],imgUrl:'wardrobe-photos/IMG_3046.JPEG',added:'2025-01-01'},
+  {id:'s_3047',name:'Light Denim Jacket',cat:'outerwear',colour:'Light Blue',tags:['casual','classic','denim'],imgUrl:'wardrobe-photos/IMG_3047.JPEG',added:'2025-01-01'},
+  {id:'s_3048',name:'Red Leather Biker Jacket',cat:'outerwear',colour:'Red',tags:['edgy','statement','bold'],imgUrl:'wardrobe-photos/IMG_3048.JPEG',added:'2025-01-01'},
+  {id:'s_3049',name:'Dark Plaid Bul Crop Jacket',cat:'outerwear',colour:'Dark Plaid',tags:['quirky','professional','bul'],imgUrl:'wardrobe-photos/IMG_3049.JPEG',added:'2025-01-01'},
+  {id:'s_3050',name:'Pink Eagle Souvenir Bomber',cat:'outerwear',colour:'Pink/Blush',tags:['quirky','fun','statement','embroidered'],imgUrl:'wardrobe-photos/IMG_3050.JPEG',added:'2025-01-01'},
+  {id:'s_3051',name:'Dusty Pink Blazer',cat:'outerwear',colour:'Dusty Pink',tags:['professional','classic','H&M'],imgUrl:'wardrobe-photos/IMG_3051.JPEG',added:'2025-01-01'},
+  {id:'s_3052',name:'Black Blazer',cat:'outerwear',colour:'Black',tags:['professional','classic','versatile'],imgUrl:'wardrobe-photos/IMG_3052.JPEG',added:'2025-01-01'},
+];
+
+function initItems() {
+  const stored = JSON.parse(localStorage.getItem('wardrobe_items') || 'null');
+  if (stored && stored.length > 0) return stored;
+  localStorage.setItem('wardrobe_items', JSON.stringify(SEED_ITEMS));
+  return SEED_ITEMS;
+}
+
+let items = initItems();
+let outfits = JSON.parse(localStorage.getItem('wardrobe_outfits') || '[]');
+let wishlist = JSON.parse(localStorage.getItem('wardrobe_wishlist') || '[]');
+let currentFilter = 'all';
+let outfitFilter = 'all';
+let currentOutfitSelection = {}; // cat -> item id
+let pendingImages = []; // [{dataUrl, name}]
+let currentSeason = 'autumn';
+let detailItemId = null;
+let apiKey = localStorage.getItem('wardrobe_api_key') || '';
+
+if (apiKey) document.getElementById('api-key-input').value = apiKey;
+
+// ─── NAV ─────────────────────────────────────────────────────────────────────
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'wardrobe') renderWardrobeGrid();
+  if (name === 'outfits') { renderOutfitPicker(); renderSavedOutfits(); }
+  if (name === 'trends') renderTrends();
+}
+
+// ─── WARDROBE GRID ───────────────────────────────────────────────────────────
+function renderWardrobeGrid() {
+  const grid = document.getElementById('wardrobe-grid');
+  const filtered = currentFilter === 'all' ? items : items.filter(i => i.cat === currentFilter);
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">👗</div><p>No items in this category yet.<br>Click <strong>+ Add Item</strong> to add some.</p></div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(item => `
+    <div class="item-card" onclick="openDetail('${item.id}')">
+      <div class="item-img-wrap">
+        ${item.imgUrl ? `<img src="${item.imgUrl}" alt="${item.name}">` : `<div class="placeholder">👗</div>`}
+      </div>
+      <div class="item-info">
+        <div class="item-name" title="${item.name}">${item.name}</div>
+        <span class="item-cat cat-${item.cat}">${catLabel(item.cat)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterCat(cat, el) {
+  currentFilter = cat;
+  document.querySelectorAll('#view-wardrobe .cat-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderWardrobeGrid();
+}
+
+function catLabel(cat) {
+  return { shoes:'Shoes', boots:'Boots', sneakers:'Sneakers', dresses:'Dress', pants:'Pants', shirts:'Top', skirts:'Skirt', outerwear:'Jacket', accessories:'Accessory' }[cat] || cat;
+}
+
+// ─── UPLOAD ───────────────────────────────────────────────────────────────────
+function openUploadModal() {
+  pendingImages = [];
+  document.getElementById('upload-preview').innerHTML = '';
+  document.getElementById('item-name').value = '';
+  document.getElementById('item-colour').value = '';
+  document.getElementById('item-tags').value = '';
+  document.getElementById('processing-bar').style.display = 'none';
+  document.getElementById('upload-modal').classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  processFiles(files);
+}
+
+function handleFileSelect(e) {
+  processFiles(Array.from(e.target.files));
+}
+
+async function processFiles(files) {
+  const bar = document.getElementById('processing-bar');
+  const fill = document.getElementById('processing-fill');
+  bar.style.display = 'block';
+  for (let i = 0; i < files.length; i++) {
+    fill.style.width = ((i / files.length) * 80) + '%';
+    const url = await removeBackground(files[i]);
+    pendingImages.push({ dataUrl: url, originalName: files[i].name });
+    const prev = document.getElementById('upload-preview');
+    const img = document.createElement('img');
+    img.src = url;
+    prev.appendChild(img);
+    if (files.length === 1 && !document.getElementById('item-name').value) {
+      const base = files[0].name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+      document.getElementById('item-name').value = capitalise(base);
+    }
+  }
+  fill.style.width = '100%';
+  setTimeout(() => { bar.style.display = 'none'; fill.style.width = '0%'; }, 600);
+}
+
+async function removeBackground(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const dataUrl = e.target.result;
+      try {
+        // Try browser-based background removal
+        const img = new Image();
+        img.src = dataUrl;
+        await new Promise(r => img.onload = r);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        // Simple white background approach — keep image, set white bg
+        const bgCanvas = document.createElement('canvas');
+        bgCanvas.width = img.naturalWidth;
+        bgCanvas.height = img.naturalHeight;
+        const bgCtx = bgCanvas.getContext('2d');
+        bgCtx.fillStyle = '#ffffff';
+        bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+        bgCtx.drawImage(img, 0, 0);
+        resolve(bgCanvas.toDataURL('image/png'));
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function saveItem() {
+  const name = document.getElementById('item-name').value.trim();
+  const cat = document.getElementById('item-cat').value;
+  const colour = document.getElementById('item-colour').value.trim();
+  const tags = document.getElementById('item-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+  if (!name) { toast('Please enter a name for this item'); return; }
+
+  const imagesToSave = pendingImages.length > 0 ? pendingImages : [{ dataUrl: null }];
+  imagesToSave.forEach((img, idx) => {
+    const item = {
+      id: Date.now() + '_' + idx,
+      name: imagesToSave.length > 1 ? name + ' ' + (idx + 1) : name,
+      cat, colour, tags,
+      imgUrl: img.dataUrl,
+      added: new Date().toISOString()
+    };
+    items.push(item);
+  });
+
+  saveItems();
+  renderWardrobeGrid();
+  closeModal('upload-modal');
+  toast(`Added ${imagesToSave.length} item(s) to wardrobe`);
+}
+
+function saveItems() { localStorage.setItem('wardrobe_items', JSON.stringify(items)); }
+
+// ─── DETAIL MODAL ─────────────────────────────────────────────────────────────
+function openDetail(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  detailItemId = id;
+  document.getElementById('detail-title').textContent = item.name;
+  document.getElementById('detail-img').src = item.imgUrl || '';
+  document.getElementById('detail-img').style.display = item.imgUrl ? 'block' : 'none';
+  document.getElementById('detail-cat').textContent = catLabel(item.cat);
+  document.getElementById('detail-colour').textContent = item.colour || '—';
+  const usedIn = outfits.filter(o => Object.values(o.items).includes(id));
+  document.getElementById('detail-outfits').innerHTML = usedIn.length
+    ? usedIn.map(o => `<span class="outfit-tag">${o.name}</span>`).join('')
+    : '<span style="font-size:0.82rem;color:var(--text2)">Not used in any outfits yet</span>';
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function deleteItem() {
+  if (!detailItemId) return;
+  if (!confirm('Delete this item from your wardrobe?')) return;
+  items = items.filter(i => i.id !== detailItemId);
+  saveItems();
+  renderWardrobeGrid();
+  closeModal('detail-modal');
+  toast('Item deleted');
+}
+
+// ─── OUTFIT BUILDER ──────────────────────────────────────────────────────────
+function switchOutfitTab(tab, btn) {
+  document.querySelectorAll('.outfit-tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('outfit-builder-tab').style.display = tab === 'builder' ? '' : 'none';
+  document.getElementById('outfit-saved-tab').style.display = tab === 'saved' ? '' : 'none';
+  if (tab === 'saved') renderSavedOutfits();
+}
+
+function renderOutfitPicker() {
+  const grid = document.getElementById('outfit-picker-grid');
+  const filtered = outfitFilter === 'all' ? items : items.filter(i => i.cat === outfitFilter);
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">👗</div><p>No items here yet.</p></div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(item => {
+    const isSelected = Object.values(currentOutfitSelection).includes(item.id);
+    return `
+      <div class="item-card ${isSelected ? 'selected' : ''}" onclick="toggleOutfitItem('${item.id}')">
+        <div class="item-sel-badge">✓</div>
+        <div class="item-img-wrap">
+          ${item.imgUrl ? `<img src="${item.imgUrl}" alt="${item.name}">` : `<div class="placeholder">👗</div>`}
+        </div>
+        <div class="item-info">
+          <div class="item-name" title="${item.name}">${item.name}</div>
+          <span class="item-cat cat-${item.cat}">${catLabel(item.cat)}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function filterOutfitCat(cat, el) {
+  outfitFilter = cat;
+  document.querySelectorAll('#outfit-cat-filters .cat-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderOutfitPicker();
+}
+
+function toggleOutfitItem(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  const cat = item.cat;
+  if (currentOutfitSelection[cat] === id) {
+    delete currentOutfitSelection[cat];
+  } else {
+    currentOutfitSelection[cat] = id;
+  }
+  updateOutfitSlots();
+  renderOutfitPicker();
+  const count = Object.keys(currentOutfitSelection).length;
+  document.getElementById('outfit-count').textContent = count + ' item' + (count !== 1 ? 's' : '') + ' selected';
+}
+
+function updateOutfitSlots() {
+  const slots = document.getElementById('outfit-slots');
+  const cats = ['dresses','shirts','skirts','pants','shoes','boots','sneakers'];
+  const filled = cats.filter(c => currentOutfitSelection[c]);
+  if (!filled.length) {
+    slots.innerHTML = '<div style="grid-column:1/-1;font-size:0.8rem;color:var(--text2);padding:8px">Select items from the list to build your outfit.</div>';
+    return;
+  }
+  slots.innerHTML = filled.map(cat => {
+    const item = items.find(i => i.id === currentOutfitSelection[cat]);
+    return `<div class="outfit-slot filled">
+      ${item && item.imgUrl ? `<img src="${item.imgUrl}" alt="${item.name}">` : `<span style="font-size:1.4rem">👗</span>`}
+      <div class="slot-label">${item ? item.name : ''}</div>
+      <div class="slot-remove" onclick="removeOutfitItem('${cat}')">✕ remove</div>
+    </div>`;
+  }).join('');
+}
+
+function removeOutfitItem(cat) {
+  delete currentOutfitSelection[cat];
+  updateOutfitSlots();
+  renderOutfitPicker();
+}
+
+function clearOutfit() {
+  currentOutfitSelection = {};
+  updateOutfitSlots();
+  renderOutfitPicker();
+  document.getElementById('outfit-name-input').value = '';
+  document.getElementById('ai-outfit-suggest').style.display = 'none';
+  document.getElementById('outfit-count').textContent = '0 items selected';
+}
+
+function saveOutfit() {
+  const name = document.getElementById('outfit-name-input').value.trim();
+  if (!name) { toast('Give your outfit a name first'); return; }
+  if (!Object.keys(currentOutfitSelection).length) { toast('Select at least one item'); return; }
+  const outfit = { id: Date.now().toString(), name, items: { ...currentOutfitSelection }, created: new Date().toISOString() };
+  outfits.push(outfit);
+  localStorage.setItem('wardrobe_outfits', JSON.stringify(outfits));
+  toast(`Outfit "${name}" saved!`);
+  clearOutfit();
+}
+
+function renderSavedOutfits() {
+  const grid = document.getElementById('outfit-saved-grid');
+  if (!outfits.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="icon">👚</div><p>No saved outfits yet.</p></div>`;
+    return;
+  }
+  grid.innerHTML = outfits.map(o => {
+    const itemIds = Object.values(o.items);
+    const thumbs = itemIds.map(id => {
+      const item = items.find(i => i.id === id);
+      return item && item.imgUrl ? `<img src="${item.imgUrl}" alt="${item.name}" title="${item.name}">` : `<div class="empty-thumb">👗</div>`;
+    }).join('');
+    return `<div class="outfit-card">
+      <h4>${o.name}</h4>
+      <div class="outfit-thumbs">${thumbs}</div>
+      <div style="font-size:0.78rem;color:var(--text2);margin-top:8px">${itemIds.length} pieces · ${new Date(o.created).toLocaleDateString()}</div>
+      <div class="outfit-actions">
+        <button class="btn btn-outline btn-sm" onclick="loadOutfit('${o.id}')">Edit</button>
+        <button class="btn btn-sm" style="background:#c4605a" onclick="deleteOutfit('${o.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function loadOutfit(id) {
+  const o = outfits.find(x => x.id === id);
+  if (!o) return;
+  currentOutfitSelection = { ...o.items };
+  document.getElementById('outfit-name-input').value = o.name;
+  updateOutfitSlots();
+  renderOutfitPicker();
+  switchOutfitTab('builder', document.querySelector('.outfit-tab-btn'));
+  const count = Object.keys(currentOutfitSelection).length;
+  document.getElementById('outfit-count').textContent = count + ' items selected';
+}
+
+function deleteOutfit(id) {
+  if (!confirm('Delete this outfit?')) return;
+  outfits = outfits.filter(o => o.id !== id);
+  localStorage.setItem('wardrobe_outfits', JSON.stringify(outfits));
+  renderSavedOutfits();
+  toast('Outfit deleted');
+}
+
+async function getOutfitSuggestion() {
+  const selected = Object.entries(currentOutfitSelection);
+  if (!selected.length) { toast('Select some items first'); return; }
+  const box = document.getElementById('ai-outfit-suggest');
+  const txt = document.getElementById('ai-outfit-text');
+  box.style.display = 'block';
+  txt.innerHTML = '<span class="spinner"></span> Styling…';
+  const names = selected.map(([cat, id]) => { const it = items.find(i => i.id === id); return it ? it.name : cat; });
+  const result = await callClaude(`You are a fashion stylist. The user has selected these clothing items: ${names.join(', ')}. Give a short, fun, 2-3 sentence note on why this combo works (or a friendly tip to improve it). Be enthusiastic and encouraging!`);
+  txt.innerHTML = result || 'Looking great! This combination has real personality.';
+}
+
+// ─── AI STYLIST ───────────────────────────────────────────────────────────────
+function saveApiKey() {
+  apiKey = document.getElementById('api-key-input').value.trim();
+  localStorage.setItem('wardrobe_api_key', apiKey);
+  document.getElementById('key-status').textContent = apiKey ? '✓ Saved' : '';
+}
+
+async function callClaude(prompt, systemPrompt) {
+  if (!apiKey) return 'Please enter your Claude API key in the AI Stylist tab to enable AI features.';
+  try {
+    const wardobeSummary = items.map(i => `${i.name} (${catLabel(i.cat)}, ${i.colour || 'colour unspecified'})`).join(', ');
+    const sys = systemPrompt || `You are a personal fashion stylist for a woman who is 5'4" and 60kg. She loves quirky, fun pieces with a classy and professional side. Her wardrobe contains: ${wardobeSummary || 'no items yet'}. Be warm, direct, and specific with outfit naming.`;
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 600, system: sys, messages: [{ role: 'user', content: prompt }] })
+    });
+    if (!res.ok) { const e = await res.json(); return 'API error: ' + (e.error?.message || res.status); }
+    const data = await res.json();
+    return data.content?.[0]?.text || '';
+  } catch (e) { return 'Could not reach Claude API. Check your key and network connection.'; }
+}
+
+async function sendAiQuery() {
+  const input = document.getElementById('ai-query');
+  const query = input.value.trim();
+  if (!query) return;
+  input.value = '';
+  const log = document.getElementById('ai-chat-log');
+  log.innerHTML += `<div class="msg-user">${escHtml(query)}</div>`;
+  log.innerHTML += `<div class="msg-ai" id="ai-streaming"><span class="spinner"></span></div>`;
+  log.scrollTop = log.scrollHeight;
+  const result = await callClaude(query);
+  document.getElementById('ai-streaming').innerHTML = result.replace(/\n/g, '<br>');
+  document.getElementById('ai-streaming').id = '';
+  log.scrollTop = log.scrollHeight;
+}
+
+async function generateOutfitSuggestions() {
+  const box = document.getElementById('ai-suggestions');
+  box.innerHTML = '<span class="spinner"></span> Generating ideas…';
+  const result = await callClaude(`Based on my wardrobe, suggest 4 distinct outfit combinations. For each, give: a punchy outfit name, the specific items to wear (by name), and a one-line occasion. Format each as: NAME | ITEMS | OCCASION. Keep it fun and on-brand.`);
+  if (!result || result.startsWith('Please enter') || result.startsWith('API error') || result.startsWith('Could not')) {
+    box.innerHTML = `<div style="font-size:0.85rem;color:var(--text2)">${result}</div>`; return;
+  }
+  const lines = result.split('\n').filter(l => l.includes('|'));
+  if (!lines.length) { box.innerHTML = `<div style="font-size:0.85rem;color:var(--text)">${result.replace(/\n/g,'<br>')}</div>`; return; }
+  box.innerHTML = lines.map(l => {
+    const parts = l.split('|').map(p => p.trim());
+    return `<div class="suggestion-card"><h4>${parts[0] || ''}</h4><p>${parts[1] || ''}</p><p style="margin-top:4px;color:var(--text2);font-size:0.78rem">${parts[2] || ''}</p></div>`;
+  }).join('');
+}
+
+// ─── TRENDS ───────────────────────────────────────────────────────────────────
+const TRENDS_DATA = {
+  autumn: [
+    { title: 'Rich Chocolate & Caramel Tones', desc: 'Deep cocoa browns, warm tans and burnt sienna are dominating autumn runways. Monochromatic chocolate looks are a key play.', buy: 'Add a chocolate brown midi skirt or caramel knit top to anchor warm-toned looks.' },
+    { title: 'Quirky Print Blazers', desc: 'Statement blazers with abstract prints, houndstooth with a twist, and conversational patterns elevate even the simplest base outfit.', buy: 'A bold-print blazer instantly adds the classy-quirky balance you love.' },
+    { title: 'Unexpected Textures', desc: 'Velvet, bouclé, and faux suede in earthy tones add tactile interest and keep looks interesting without loud prints.', buy: 'A bouclé top or velvet flats add texture to any outfit for minimal effort.' },
+    { title: 'High-Waisted Wide Leg Trousers', desc: 'The wide-leg silhouette remains strong. High waist elongates the frame and looks polished for office or evenings.', buy: 'One pair in a neutral (black, cream, or camel) will work with nearly everything.' }
+  ],
+  winter: [
+    { title: 'Luxe Layering', desc: 'Turtlenecks under slip dresses, longline cardigans over everything, and unexpected layer combos are all over winter street style.', buy: 'A ribbed mock-neck in ivory or camel is an instant layering hero.' },
+    { title: 'Statement Coats', desc: 'The coat IS the outfit this winter — sculptural silhouettes in bold colours (cobalt, cherry, emerald) or plush faux fur.', buy: 'One eye-catching coat over a simple base outfit does all the work.' },
+    { title: 'Knee-High Boots', desc: 'Sleek or chunky, knee-highs remain the season\'s power move. Pair with midi skirts or straight-leg jeans.', buy: 'A black or brown knee-high boot is a wardrobe workhorse worth investing in.' },
+    { title: 'Deep Jewel Tones', desc: 'Sapphire, amethyst, forest green and burgundy bring drama to winter palettes without looking dark or heavy.', buy: 'A jewel-toned blouse or skirt can build multiple outfit combinations.' }
+  ],
+  spring: [
+    { title: 'Pastel Power', desc: 'Lilac, butter yellow, powder blue and rose are fresh without being sweet. Best worn head-to-toe or as a colour-block pair.', buy: 'A pastel blazer or wide-leg pant adds the quirky-professional spring look.' },
+    { title: 'Floral But Make It Edgy', desc: 'Oversized florals, dark-ground floral prints, and deconstructed patterns replace traditional ditsy prints for a modern take.', buy: 'A bold floral midi dress bridges casual and occasion dressing beautifully.' },
+    { title: 'Ballet Inspired', desc: 'Ballet flats, wrap skirts, and ribbon-detail tops bring a graceful femininity that feels both fun and elegant.', buy: 'A pair of ballet flats in black or blush is a must — versatile and comfortable.' },
+    { title: 'Linen Everything', desc: 'Relaxed linen sets, linen wide-leg trousers and linen shirts in natural tones are the effortless spring uniform.', buy: 'A linen co-ord set reads casual or professional depending on how you style it.' }
+  ],
+  summer: [
+    { title: 'Playful Mini Dresses', desc: 'Fun prints, unexpected cuts, and bold colours in mini lengths are the spirit of summer dressing done right.', buy: 'A printed mini or shirt dress is the easiest summer outfit with the least effort.' },
+    { title: 'Platform Sandals', desc: 'Chunky platform sandals in neutral or metallic tones add height and personality without sacrificing comfort on long days.', buy: 'A platform sandal in tan or metallic gold lifts any summer outfit.' },
+    { title: 'Bright Colour Clashing', desc: 'Intentional colour clashing — hot pink with orange, cobalt with lime — is bold, confident and very summer 2025.', buy: 'Start with one bright statement piece (skirt or top) to ease into colour clashing.' },
+    { title: 'Sheer Layers', desc: 'Sheer shirts, voile dresses and mesh tops layered over bralettes or bodysuits add breezy elegance for warm nights.', buy: 'A sheer printed top or dress adds sophistication to summer casual looks.' }
+  ]
+};
+
+let currentTrendSeason = 'autumn';
+
+function setSeason(season, btn) {
+  currentTrendSeason = season;
+  document.querySelectorAll('.season-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTrends();
+}
+
+function renderTrends() {
+  const grid = document.getElementById('trends-grid');
+  const trends = TRENDS_DATA[currentTrendSeason] || [];
+  grid.innerHTML = trends.map(t => `
+    <div class="trend-card">
+      <div class="season">${currentTrendSeason.charAt(0).toUpperCase() + currentTrendSeason.slice(1)} ${new Date().getFullYear()}</div>
+      <h4>${t.title}</h4>
+      <p>${t.desc}</p>
+      <div class="buy-reason"><strong>Add to wardrobe:</strong> ${t.buy}</div>
+    </div>
+  `).join('');
+  renderWishlist();
+}
+
+async function refreshTrends() {
+  const grid = document.getElementById('trends-grid');
+  grid.innerHTML = '<div style="padding:20px;color:var(--text2);font-size:0.88rem"><span class="spinner"></span> Fetching AI trend insights…</div>';
+  const season = currentTrendSeason;
+  const wardrobeSummary = items.length ? items.map(i => `${i.name} (${catLabel(i.cat)})`).join(', ') : 'no items yet';
+  const result = await callClaude(`Give me 4 current ${season} ${new Date().getFullYear()} fashion trends for a quirky, fun, classy-professional woman aged 30s-40s. For each trend write: TITLE | 2-sentence description | Specific "add to wardrobe" recommendation given she has: ${wardrobeSummary}. Format: TITLE | DESCRIPTION | BUY_REC`, 'You are a fashion editor specialising in personal style for creative professional women. Keep advice specific and actionable.');
+  if (!result || result.startsWith('Please enter') || result.startsWith('API error') || result.startsWith('Could not')) {
+    renderTrends(); return;
+  }
+  const lines = result.split('\n').filter(l => l.includes('|'));
+  if (!lines.length) { renderTrends(); return; }
+  grid.innerHTML = lines.map(l => {
+    const [title, desc, buy] = l.split('|').map(s => s.trim());
+    return `<div class="trend-card">
+      <div class="season">${season.charAt(0).toUpperCase() + season.slice(1)} ${new Date().getFullYear()} · AI</div>
+      <h4>${title || ''}</h4>
+      <p>${desc || ''}</p>
+      ${buy ? `<div class="buy-reason"><strong>Add to wardrobe:</strong> ${buy}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ─── WISHLIST ─────────────────────────────────────────────────────────────────
+function openWishlistModal() {
+  document.getElementById('wish-name').value = '';
+  document.getElementById('wish-reason').value = '';
+  document.getElementById('wishlist-modal').classList.add('open');
+}
+
+function saveWishlistItem() {
+  const name = document.getElementById('wish-name').value.trim();
+  if (!name) { toast('Enter an item name'); return; }
+  const item = { id: Date.now().toString(), name, reason: document.getElementById('wish-reason').value.trim(), priority: document.getElementById('wish-priority').value, added: new Date().toISOString() };
+  wishlist.push(item);
+  localStorage.setItem('wardrobe_wishlist', JSON.stringify(wishlist));
+  closeModal('wishlist-modal');
+  renderWishlist();
+  toast('Added to wishlist');
+}
+
+function renderWishlist() {
+  const grid = document.getElementById('wishlist-grid');
+  if (!wishlist.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="icon">🛍</div><p>Your wishlist is empty.</p></div>`;
+    return;
+  }
+  grid.innerHTML = wishlist.map(w => `
+    <div class="wishlist-item">
+      <h5>${w.name}</h5>
+      ${w.reason ? `<p>${w.reason}</p>` : ''}
+      <div class="priority priority-${w.priority}">${{ high:'🔴 High priority', med:'🟡 Nice to have', low:'⚪ Someday' }[w.priority]}</div>
+      <div style="margin-top:8px"><button class="btn btn-sm" style="background:#c4605a" onclick="removeWish('${w.id}')">Remove</button></div>
+    </div>
+  `).join('');
+}
+
+function removeWish(id) {
+  wishlist = wishlist.filter(w => w.id !== id);
+  localStorage.setItem('wardrobe_wishlist', JSON.stringify(wishlist));
+  renderWishlist();
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function capitalise(str) { return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '); }
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderWardrobeGrid();
+renderTrends();
+renderWishlist();
+updateOutfitSlots();
+renderOutfitPicker();
+</script>
+</body>
+</html>
