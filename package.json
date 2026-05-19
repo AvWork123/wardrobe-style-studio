@@ -4,7 +4,8 @@
   "description": "AI wardrobe inventory and outfit styling app — multi-user",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "npm install --build-from-source"
   },
   "engines": {
     "node": ">=18"
