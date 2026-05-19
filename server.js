@@ -1,61 +1,27 @@
 const express = require('express');
 const path = require('path');
-const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const multer = require('multer');
 const fs = require('fs');
+const Datastore = require('nedb-promises');
 
 const app = express();
-const db = new Database(path.join(__dirname, 'wardrobe.db'));
-db.pragma('journal_mode = WAL');
 
-// ─── SCHEMA ──────────────────────────────────────────────────────────────────
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL COLLATE NOCASE,
-    password_hash TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
-  );
+// ─── DATABASE ─────────────────────────────────────────────────────────────────
+const dbDir = process.env.DB_PATH || path.join(__dirname, 'data');
+fs.mkdirSync(dbDir, { recursive: true });
 
-  CREATE TABLE IF NOT EXISTS sessions (
-    token TEXT PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    expires_at TEXT NOT NULL
-  );
+const db = {
+  users:    Datastore.create({ filename: path.join(dbDir, 'users.db'),    autoload: true }),
+  sessions: Datastore.create({ filename: path.join(dbDir, 'sessions.db'), autoload: true }),
+  items:    Datastore.create({ filename: path.join(dbDir, 'items.db'),    autoload: true }),
+  outfits:  Datastore.create({ filename: path.join(dbDir, 'outfits.db'),  autoload: true }),
+  wishlist: Datastore.create({ filename: path.join(dbDir, 'wishlist.db'), autoload: true }),
+};
 
-  CREATE TABLE IF NOT EXISTS wardrobe_items (
-    id TEXT PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    cat TEXT NOT NULL,
-    colour TEXT DEFAULT '',
-    tags TEXT DEFAULT '[]',
-    img_url TEXT DEFAULT '',
-    added TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS outfits (
-    id TEXT PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    items TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS wishlist (
-    id TEXT PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    reason TEXT DEFAULT '',
-    priority TEXT DEFAULT 'med',
-    added TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-`);
+// Ensure unique index on username
+db.users.ensureIndex({ fieldName: 'username', unique: true, sparse: false });
 
 // ─── MIDDLEWARE ───────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '20mb' }));
@@ -75,143 +41,129 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024 } });
 
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   const token = (req.headers.authorization || '').replace('Bearer ', '').trim();
   if (!token) return res.status(401).json({ error: 'Not authenticated' });
-  const session = db.prepare(
-    `SELECT * FROM sessions WHERE token = ? AND expires_at > datetime('now')`
-  ).get(token);
+  const session = await db.sessions.findOne({ token, expires: { $gt: new Date() } });
   if (!session) return res.status(401).json({ error: 'Session expired' });
-  req.userId = session.user_id;
+  req.userId = session.userId;
   req.token = token;
   next();
 }
 
+function newExpiry() {
+  return new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+}
+
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username?.trim() || !password) return res.status(400).json({ error: 'Username and password required' });
   if (username.trim().length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters' });
   if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
   try {
     const hash = bcrypt.hashSync(password, 10);
-    const result = db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run(username.trim(), hash);
+    const user = await db.users.insert({ username: username.trim().toLowerCase(), displayName: username.trim(), password_hash: hash, created: new Date() });
     const token = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
-    db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, result.lastInsertRowid, expires);
-    res.json({ token, username: username.trim() });
+    await db.sessions.insert({ token, userId: user._id, expires: newExpiry() });
+    res.json({ token, username: user.displayName });
   } catch (e) {
-    if (e.message.includes('UNIQUE')) return res.status(400).json({ error: 'That username is already taken' });
+    if (e.errorType === 'uniqueViolated') return res.status(400).json({ error: 'That username is already taken' });
+    console.error(e);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
-  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username.trim());
+  const user = await db.users.findOne({ username: username.trim().toLowerCase() });
   if (!user || !bcrypt.compareSync(password, user.password_hash))
     return res.status(401).json({ error: 'Incorrect username or password' });
   const token = crypto.randomBytes(32).toString('hex');
-  const expires = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
-  db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, user.id, expires);
-  res.json({ token, username: user.username });
+  await db.sessions.insert({ token, userId: user._id, expires: newExpiry() });
+  res.json({ token, username: user.displayName });
 });
 
-app.post('/api/auth/logout', requireAuth, (req, res) => {
-  db.prepare('DELETE FROM sessions WHERE token = ?').run(req.token);
+app.post('/api/auth/logout', requireAuth, async (req, res) => {
+  await db.sessions.remove({ token: req.token }, {});
   res.json({ ok: true });
 });
 
-app.get('/api/auth/me', requireAuth, (req, res) => {
-  const user = db.prepare('SELECT id, username FROM users WHERE id = ?').get(req.userId);
-  res.json(user);
+app.get('/api/auth/me', requireAuth, async (req, res) => {
+  const user = await db.users.findOne({ _id: req.userId });
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json({ id: user._id, username: user.displayName });
 });
 
 // ─── WARDROBE ITEMS ───────────────────────────────────────────────────────────
-app.get('/api/items', requireAuth, (req, res) => {
-  const rows = db.prepare('SELECT * FROM wardrobe_items WHERE user_id = ? ORDER BY added DESC').all(req.userId);
-  res.json(rows.map(r => ({ ...r, tags: JSON.parse(r.tags) })));
+app.get('/api/items', requireAuth, async (req, res) => {
+  const items = await db.items.find({ userId: req.userId }).sort({ added: -1 });
+  res.json(items.map(i => ({ ...i, id: i._id })));
 });
 
-app.post('/api/items', requireAuth, (req, res) => {
+app.post('/api/items', requireAuth, async (req, res) => {
   const { id, name, cat, colour, tags, imgUrl } = req.body;
-  if (!id || !name || !cat) return res.status(400).json({ error: 'Missing fields' });
-  db.prepare(
-    'INSERT INTO wardrobe_items (id, user_id, name, cat, colour, tags, img_url) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, req.userId, name, cat, colour || '', JSON.stringify(tags || []), imgUrl || '');
-  res.json({ ok: true });
+  if (!name || !cat) return res.status(400).json({ error: 'Missing fields' });
+  const doc = await db.items.insert({ _id: id || undefined, userId: req.userId, name, cat, colour: colour || '', tags: tags || [], img_url: imgUrl || '', added: new Date() });
+  res.json({ ok: true, id: doc._id });
 });
 
-app.put('/api/items/:id', requireAuth, (req, res) => {
-  const { name, cat, colour, tags } = req.body;
-  db.prepare(
-    'UPDATE wardrobe_items SET name=?, cat=?, colour=?, tags=? WHERE id=? AND user_id=?'
-  ).run(name, cat, colour || '', JSON.stringify(tags || []), req.params.id, req.userId);
-  res.json({ ok: true });
-});
-
-app.delete('/api/items/:id', requireAuth, (req, res) => {
-  db.prepare('DELETE FROM wardrobe_items WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
+app.delete('/api/items/:id', requireAuth, async (req, res) => {
+  await db.items.remove({ _id: req.params.id, userId: req.userId }, {});
   res.json({ ok: true });
 });
 
 // Photo upload
 app.post('/api/upload', requireAuth, upload.single('photo'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
-  const url = `/uploads/${req.userId}/${req.file.filename}`;
-  res.json({ url });
+  res.json({ url: `/uploads/${req.userId}/${req.file.filename}` });
 });
 
-// Import Avril's seed wardrobe (only if user has 0 items)
-app.post('/api/import-seed', requireAuth, (req, res) => {
-  const count = db.prepare('SELECT COUNT(*) as n FROM wardrobe_items WHERE user_id = ?').get(req.userId).n;
+// Import seed wardrobe
+app.post('/api/import-seed', requireAuth, async (req, res) => {
+  const count = await db.items.count({ userId: req.userId });
   if (count > 0) return res.status(400).json({ error: 'Wardrobe already has items' });
   const SEED = require('./seed-items.json');
-  const insert = db.prepare(
-    'INSERT INTO wardrobe_items (id, user_id, name, cat, colour, tags, img_url) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  );
-  const insertMany = db.transaction((items) => {
-    for (const item of items) {
-      insert.run(item.id + '_' + req.userId, req.userId, item.name, item.cat, item.colour || '', JSON.stringify(item.tags || []), item.imgUrl || '');
-    }
-  });
-  insertMany(SEED);
+  for (const item of SEED) {
+    await db.items.insert({ userId: req.userId, name: item.name, cat: item.cat, colour: item.colour || '', tags: item.tags || [], img_url: item.imgUrl || '', added: new Date() });
+  }
   res.json({ ok: true, count: SEED.length });
 });
 
 // ─── OUTFITS ──────────────────────────────────────────────────────────────────
-app.get('/api/outfits', requireAuth, (req, res) => {
-  const rows = db.prepare('SELECT * FROM outfits WHERE user_id = ? ORDER BY created_at DESC').all(req.userId);
-  res.json(rows.map(r => ({ ...r, items: JSON.parse(r.items) })));
+app.get('/api/outfits', requireAuth, async (req, res) => {
+  const outfits = await db.outfits.find({ userId: req.userId }).sort({ created_at: -1 });
+  res.json(outfits.map(o => ({ ...o, id: o._id })));
 });
 
-app.post('/api/outfits', requireAuth, (req, res) => {
-  const { id, name, items } = req.body;
-  if (!id || !name || !items) return res.status(400).json({ error: 'Missing fields' });
-  db.prepare('INSERT INTO outfits (id, user_id, name, items) VALUES (?, ?, ?, ?)').run(id, req.userId, name, JSON.stringify(items));
-  res.json({ ok: true });
+app.post('/api/outfits', requireAuth, async (req, res) => {
+  const { name, items } = req.body;
+  if (!name || !items) return res.status(400).json({ error: 'Missing fields' });
+  const doc = await db.outfits.insert({ userId: req.userId, name, items, created_at: new Date() });
+  res.json({ ok: true, id: doc._id });
 });
 
-app.delete('/api/outfits/:id', requireAuth, (req, res) => {
-  db.prepare('DELETE FROM outfits WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
+app.delete('/api/outfits/:id', requireAuth, async (req, res) => {
+  await db.outfits.remove({ _id: req.params.id, userId: req.userId }, {});
   res.json({ ok: true });
 });
 
 // ─── WISHLIST ─────────────────────────────────────────────────────────────────
-app.get('/api/wishlist', requireAuth, (req, res) => {
-  res.json(db.prepare('SELECT * FROM wishlist WHERE user_id = ? ORDER BY added DESC').all(req.userId));
+app.get('/api/wishlist', requireAuth, async (req, res) => {
+  const items = await db.wishlist.find({ userId: req.userId }).sort({ added: -1 });
+  res.json(items.map(i => ({ ...i, id: i._id })));
 });
 
-app.post('/api/wishlist', requireAuth, (req, res) => {
-  const { id, name, reason, priority } = req.body;
-  if (!id || !name) return res.status(400).json({ error: 'Missing fields' });
-  db.prepare('INSERT INTO wishlist (id, user_id, name, reason, priority) VALUES (?, ?, ?, ?, ?)').run(id, req.userId, name, reason || '', priority || 'med');
-  res.json({ ok: true });
+app.post('/api/wishlist', requireAuth, async (req, res) => {
+  const { name, reason, priority } = req.body;
+  if (!name) return res.status(400).json({ error: 'Missing name' });
+  const doc = await db.wishlist.insert({ userId: req.userId, name, reason: reason || '', priority: priority || 'med', added: new Date() });
+  res.json({ ok: true, id: doc._id });
 });
 
-app.delete('/api/wishlist/:id', requireAuth, (req, res) => {
-  db.prepare('DELETE FROM wishlist WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
+app.delete('/api/wishlist/:id', requireAuth, async (req, res) => {
+  await db.wishlist.remove({ _id: req.params.id, userId: req.userId }, {});
   res.json({ ok: true });
 });
 
